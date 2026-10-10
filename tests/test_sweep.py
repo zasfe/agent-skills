@@ -81,5 +81,30 @@ class Sweep(unittest.TestCase):
             self.assertEqual(sweep.main([clean]), 2)
 
 
+class IsBinaryTests(unittest.TestCase):
+    """Boundary and input-type coverage for the sweep binary-file guard."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_extensions_content_boundary_and_invalid_paths(self):
+        root = self.tmp.name
+        upper_extension = put(root, "image.PNG", b"plain text", binary=True)
+        suffix_only = put(root, "image.png.backup", b"plain text", binary=True)
+        nul_before_limit = put(root, "nul-before-limit.txt", b"a" * 4095 + b"\0", binary=True)
+        nul_at_limit = put(root, "nul-at-limit.txt", b"a" * 4096 + b"\0", binary=True)
+
+        self.assertTrue(sweep.is_binary(upper_extension))
+        self.assertFalse(sweep.is_binary(suffix_only))
+        self.assertTrue(sweep.is_binary(nul_before_limit))
+        self.assertFalse(sweep.is_binary(nul_at_limit))
+        self.assertTrue(sweep.is_binary(os.path.join(root, "missing.txt")))
+        with self.assertRaises(TypeError):
+            sweep.is_binary(None)
+
+
 if __name__ == "__main__":
     unittest.main()
